@@ -198,7 +198,18 @@
         </div>
       </div>
 
-      <div class="deadline rv">Submission deadline: <b>11 December 2026</b></div>
+      <div class="deadline rv">
+        <a href="#submit">
+          Submission deadline: <b>11 December 2026</b>
+        </a>
+      </div>
+      <!-- <div class="deadline-cta rv">
+        <a href="#submit" class="btn deadline-btn">
+          Submit Your Paper
+          <span aria-hidden="true">→</span>
+        </a>
+        <p>Share your research, ideas and experiences with the music education community.</p>
+      </div> -->
     </div>
   </section>
 
@@ -222,9 +233,20 @@
               autocomplete="email" placeholder="you@example.com" required>
             <div class="err"></div>
           </div>
-          <div><label for="phone">Phone Number <sup>*</sup></label><input id="phone" name="phone" type="tel"
-              autocomplete="tel" placeholder="+91 98765 43210" required>
+          <div>
+            <label for="phone">Mobile Number <sup>*</sup></label>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              inputmode="numeric"
+              autocomplete="tel-national"
+              placeholder="98765 43210"
+              maxlength="10"
+              required
+            >
             <div class="err"></div>
+
           </div>
           <div><label for="designation">Designation <sup>*</sup></label><input id="designation" name="designation"
               placeholder="e.g. Head of Music" required>
@@ -238,11 +260,23 @@
               placeholder="e.g. Chennai" required>
             <div class="err"></div>
           </div>
-          <div class="full"><label for="title">Paper Title <sup>*</sup></label><input id="title" name="title"
+          <div class="for"><label for="title">Paper Title <sup>*</sup></label><input id="title" name="title"
               placeholder="Title of your submission" required>
             <div class="err"></div>
           </div>
+          
           <div>
+            <label for="theme">Theme <sup>*</sup></label>
+            <input
+                id="theme"
+                name="theme"
+                placeholder="Theme of your submission"
+                required
+            >
+            <div class="err"></div>
+          </div>
+
+          <!-- <div>
             <label for="theme">Theme <sup>*</sup></label>
             <select id="theme" name="theme" required>
               <option value="">Select a theme</option>
@@ -251,8 +285,8 @@
               <option>Whole-School Practice</option>
             </select>
             <div class="err"></div>
-          </div>
-          <div>
+          </div> -->
+          <!-- <div>
             <label for="format">Format <sup>*</sup></label>
             <select id="format" name="format" required>
               <option value="">Select a format</option>
@@ -263,11 +297,20 @@
             </select>
             <div class="hint" id="fmtHint">Choose a format to see the length guide.</div>
             <div class="err"></div>
-          </div>
+          </div> -->
           <div class="full">
             <label>File Upload <sup>*</sup></label>
             <div class="drop" id="drop" aria-label="Upload your submission file">
-              <input type="file" id="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+              <!-- <input type="file" id="file" accept=".pdf,.doc,.docx,.jp g,.jpeg,.png"> -->
+              
+              <input
+                type="file"
+                id="file"
+                name="file"
+                accept=".pdf,.doc,.jpg,.jpeg,.png"
+                required
+              >
+
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3" />
               </svg>

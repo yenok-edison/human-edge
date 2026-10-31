@@ -211,7 +211,8 @@ nav .btn {
 .hero {
     position: relative;
     color: #fff;
-    padding: 190px 0 100px;
+    padding: 100px 0 40px;
+    /* padding: 190px 0 100px; */
     text-align: center;
     background:
         radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, .08), transparent 60%),
@@ -949,11 +950,9 @@ footer {
     gap: 20px;
     padding: 30px;
     background:
-        linear-gradient(
-            135deg,
+        linear-gradient(135deg,
             #ffffff 0%,
-            #f8fcf9 100%
-        );
+            #f8fcf9 100%);
 }
 
 .success-icon {
@@ -965,11 +964,9 @@ footer {
     justify-content: center;
     border-radius: 50%;
     color: #ffffff;
-    background: linear-gradient(
-        145deg,
-        #287a52,
-        #17633e
-    );
+    background: linear-gradient(145deg,
+            #287a52,
+            #17633e);
     box-shadow: 0 5px 14px rgba(23, 99, 62, 0.20);
 }
 
@@ -1105,11 +1102,9 @@ footer {
     width: 0;
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(
-        90deg,
-        #17633e,
-        #56a878
-    );
+    background: linear-gradient(90deg,
+            #17633e,
+            #56a878);
     transition: width 0.35s ease;
 }
 
@@ -1187,5 +1182,183 @@ footer {
 
     .bar i {
         transition: none;
+    }
+}
+
+
+
+/* Professional uploaded-file card */
+
+#fn {
+    margin-top: 14px;
+}
+
+.uploaded-file {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: #fffdf8;
+    border: 1px solid #e5d8e5;
+    border-radius: 12px;
+    text-align: left;
+    box-shadow: 0 4px 14px rgba(106, 33, 95, 0.06);
+}
+
+.uploaded-file-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 48px;
+    height: 54px;
+    background: #f3e8f1;
+    color: #6A215F;
+    border: 1px solid #e4cde0;
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.uploaded-file-details {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.uploaded-file-name {
+    color: #352332;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.uploaded-file-size {
+    color: #786a78;
+    font-size: 12px;
+}
+
+.remove-upload {
+    flex: 0 0 auto;
+    padding: 8px 10px;
+    background: transparent;
+    color: #8b304a;
+    border: 1px solid #e8cbd4;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.remove-upload:hover {
+    background: #fff0f3;
+}
+
+@media (max-width: 480px) {
+    .uploaded-file {
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .uploaded-file-badge {
+        flex-basis: 40px;
+        height: 46px;
+    }
+
+    .uploaded-file-name {
+        font-size: 12px;
+    }
+
+    .remove-upload {
+        padding: 7px;
+    }
+}
+
+
+/* Deadline CTA */
+
+.deadline-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin: 22px auto 0;
+    padding: 0 16px;
+    text-align: center;
+}
+
+.deadline a {
+    color: #ffffff;
+    text-decoration: none;
+    display: inline-block;
+    transition: opacity 0.2s ease;
+}
+
+.deadline a b {
+    color: #F0D39A;
+}
+
+.deadline a:hover {
+    opacity: 0.85;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+
+.deadline-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 42px;
+    padding: 10px 22px;
+    background: #50144a;
+    color: #ffffff;
+    border: 1px solid #50144a;
+    border-radius: 66px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 4px 10px rgba(106, 33, 95, 0.12);
+    transition: all 0.25s ease;
+}
+
+.deadline-btn span {
+    color: #F0D39A;
+    font-size: 18px;
+    transition: transform 0.25s ease;
+}
+
+.deadline-btn:hover {
+    background: #4F174B;
+    transform: translateY(-1px);
+}
+
+.deadline-btn:hover span {
+    transform: translateX(3px);
+}
+
+.deadline-btn:focus-visible {
+    outline: 3px solid #DDB76D;
+    outline-offset: 4px;
+}
+
+.deadline-cta p {
+    max-width: 430px;
+    margin: 0;
+    color: #756575;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+@media (max-width: 480px) {
+    .deadline-cta {
+        margin-top: 18px;
+    }
+
+    .deadline-btn {
+        width: 100%;
+        max-width: 320px;
+        box-sizing: border-box;
     }
 }
