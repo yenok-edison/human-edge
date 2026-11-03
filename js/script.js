@@ -1,20 +1,78 @@
+
 "use strict";
+
+/* =========================================
+   CONFIGURATION
+========================================= */
 
 const CONFIG = {
     SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxPnaaEXgXzJ6aWM42IOspTrw6lYPyhH3m-uvLxgalCVx6vb4qyNQn4XLCp7eNLS7r_1w/exec",
-    DEADLINE: "2026-12-11T23:59:59+05:30",
+    DEADLINE: "2026-12-15T23:59:59+05:30",
     MAX_MB: 10,
-    PHASE: "submit",
+    PHASE: "submit"
 };
 
-const $ = (s) => document.querySelector(s);
+const ALLOWED_EXTENSIONS = ["pdf", "doc", "docx", "jpg", "jpeg", "png"];
+
+const FORMAT_HINTS = {
+    "White Paper": "1,500–4,000 words · structured argument with clear references",
+    "Published Research": "Up to 1,000 words · key findings and full citations",
+    "Case Study": "1,000–2,000 words · outcomes, challenges and lessons learnt",
+    "Poster Display": "A0 portrait poster + 200–300 word abstract"
+};
+
+const FORMAT_HINT_DEFAULT = "Choose a format to see the length guide.";
+
+const FILE_BADGES = {
+    pdf: "PDF",
+    doc: "DOC",
+    docx: "DOC",
+    jpg: "IMG",
+    jpeg: "IMG",
+    png: "IMG"
+};
+
+/* =========================================
+   FORM ELEMENTS
+========================================= */
+
+const $ = (selector) => document.querySelector(selector);
+
 const form = $("#f");
 const msg = $("#msg");
 const file = $("#file");
 const button = $("#go");
 const bar = $("#bar");
+const drop = $("#drop");
 
-console.log("Human Edge script loaded");
+let coAuthorCount = 0;
+
+const MAX_CO_AUTHORS = 3;
+
+/*
+   Required frontend fields.
+   These IDs match the latest form structure.
+*/
+
+const REQUIRED_FIELD_IDS = [
+    "name",
+    "email",
+    "phone",
+    "designation",
+    "organisation",
+    "organisation_type",
+    "board",
+    "city",
+    "state",
+    "theme",
+    "format",
+    "title",
+    "abstract"
+];
+
+/* =========================================
+   INITIALIZATION
+========================================= */
 
 if (!form || !msg || !file || !button || !bar) {
     console.error("Required form elements are missing. Check your HTML IDs.");
@@ -23,24 +81,32 @@ if (!form || !msg || !file || !button || !bar) {
 }
 
 function initialize() {
-    $("#maxmb").textContent = CONFIG.MAX_MB;
+    const maxMb = $("#maxmb");
+
+    if (maxMb) {
+        maxMb.textContent = CONFIG.MAX_MB;
+    }
 
     if (CONFIG.PHASE === "register") {
-        $("#heroCta").textContent = "Register Now";
+        const heroCta = $("#heroCta");
+
+        if (heroCta) {
+            heroCta.textContent = "Register Now";
+        }
     }
 
     startCountdown();
     initializeAnimations();
-    // initializeFormat();
-
-    if ($("#format")) {
-        initializeFormat();
-    }
-
+    initializeFormat();
     initializeUpload();
+    initializeCoAuthors();
 
     form.addEventListener("submit", submitForm);
 }
+
+/* =========================================
+   COUNTDOWN
+========================================= */
 
 function startCountdown() {
     function tick() {
@@ -49,13 +115,41 @@ function startCountdown() {
             new Date(CONFIG.DEADLINE).getTime() - Date.now()
         );
 
-        $("#cd").textContent = Math.floor(remaining / 86400000);
-        $("#ch").textContent = String(Math.floor(remaining / 3600000) % 24).padStart(2, "0");
-        $("#cm").textContent = String(Math.floor(remaining / 60000) % 60).padStart(2, "0");
-        $("#cs").textContent = String(Math.floor(remaining / 1000) % 60).padStart(2, "0");
+        const days = $("#cd");
+        const hours = $("#ch");
+        const minutes = $("#cm");
+        const seconds = $("#cs");
+
+        if (days) days.textContent = Math.floor(remaining / 86400000);
+
+        if (hours) {
+            hours.textContent = String(
+                Math.floor(remaining / 3600000) % 24
+            ).padStart(2, "0");
+        }
+
+        if (minutes) {
+            minutes.textContent = String(
+                Math.floor(remaining / 60000) % 60
+            ).padStart(2, "0");
+        }
+
+        if (seconds) {
+            seconds.textContent = String(
+                Math.floor(remaining / 1000) % 60
+            ).padStart(2, "0");
+        }
 
         if (remaining === 0) {
-            $("#phaseBadge").textContent = "Submissions are now closed";
+            const phaseBadge = $("#phaseBadge");
+
+            if (phaseBadge) {
+                phaseBadge.textContent = "Submissions are now closed";
+            }
+
+            button.disabled = true;
+            button.textContent = "Submissions Closed";
+            return;
         }
 
         setTimeout(tick, 1000);
@@ -64,9 +158,15 @@ function startCountdown() {
     tick();
 }
 
+/* =========================================
+   SCROLL ANIMATIONS
+========================================= */
+
 function initializeAnimations() {
+    const items = document.querySelectorAll(".rv");
+
     if (!("IntersectionObserver" in window)) {
-        document.querySelectorAll(".rv").forEach(el => el.classList.add("in"));
+        items.forEach(el => el.classList.add("in"));
         return;
     }
 
@@ -77,40 +177,42 @@ function initializeAnimations() {
                 observer.unobserve(entry.target);
             }
         });
-    }, { threshold: 0.1 });
+    }, {
+        threshold: 0.1
+    });
 
-    document.querySelectorAll(".rv").forEach(el => observer.observe(el));
+    items.forEach(el => observer.observe(el));
 }
 
+/* =========================================
+   FORMAT GUIDE
+========================================= */
 
 function initializeFormat() {
     const format = $("#format");
     const hint = $("#fmtHint");
 
-    // Format field is optional in the current HTML
     if (!format || !hint) return;
 
-    const hints = {
-        "White Paper":
-            "1,500–4,000 words · structured argument with clear references",
-        "Published Research":
-            "Up to 1,000 words · key findings and full citations",
-        "Case Study":
-            "1,000–2,000 words · outcomes, challenges and lessons learnt",
-        "Poster Display":
-            "A0 portrait poster + 200–300 word abstract"
-    };
-
-    format.addEventListener("change", () => {
-        hint.textContent =
-            hints[format.value] ||
-            "Choose a format to see the length guide.";
-    });
+    format.addEventListener("change", updateFormatHint);
 }
 
+function updateFormatHint() {
+    const format = $("#format");
+    const hint = $("#fmtHint");
+
+    if (!format || !hint) return;
+
+    hint.textContent =
+        FORMAT_HINTS[format.value] || FORMAT_HINT_DEFAULT;
+}
+
+/* =========================================
+   FILE UPLOAD
+========================================= */
 
 function initializeUpload() {
-    const drop = $("#drop");
+    if (!drop) return;
 
     file.addEventListener("change", showFile);
 
@@ -136,42 +238,30 @@ function initializeUpload() {
     });
 }
 
-// function showFile() {
-//     const selected = file.files[0];
-
-//     $("#fn").textContent = selected
-//         ? `${selected.name} (${(selected.size / 1048576).toFixed(2)} MB)`
-//         : "";
-
-//     $("#fileErr").textContent = "";
-// }
-
 function showFile() {
     const selected = file.files[0];
     const container = $("#fn");
-    const fileError = $("#fileErr");
+
+    if (!container) return;
 
     container.replaceChildren();
-    fileError.textContent = "";
+
+    const fileError = $("#fileErr");
+
+    if (fileError) {
+        fileError.textContent = "";
+    }
 
     if (!selected) return;
 
     const ext = selected.name.split(".").pop().toLowerCase();
-
-    const icons = {
-        pdf: "PDF",
-        doc: "DOC",
-        jpg: "IMG",
-        jpeg: "IMG",
-        png: "IMG"
-    };
 
     const card = document.createElement("div");
     card.className = "uploaded-file";
 
     const badge = document.createElement("span");
     badge.className = "uploaded-file-badge";
-    badge.textContent = icons[ext] || "FILE";
+    badge.textContent = FILE_BADGES[ext] || "FILE";
 
     const details = document.createElement("div");
     details.className = "uploaded-file-details";
@@ -182,6 +272,7 @@ function showFile() {
 
     const size = document.createElement("span");
     size.className = "uploaded-file-size";
+
     size.textContent =
         `${(selected.size / 1048576).toFixed(2)} MB · ${ext.toUpperCase()}`;
 
@@ -191,7 +282,8 @@ function showFile() {
     remove.textContent = "Remove";
     remove.setAttribute("aria-label", "Remove selected file");
 
-    remove.addEventListener("click", () => {
+    remove.addEventListener("click", e => {
+        e.stopPropagation();
         file.value = "";
         showFile();
     });
@@ -201,98 +293,231 @@ function showFile() {
     container.append(card);
 }
 
+/* =========================================
+   CO-AUTHORS
+========================================= */
+
+function initializeCoAuthors() {
+    const addButton = $("#addCoAuthorBtn");
+
+    if (addButton) {
+        addButton.addEventListener("click", addCoAuthorRow);
+    }
+
+    updateCoAuthorButton();
+}
+
+function addCoAuthorRow() {
+    const tbody = $("#coAuthorTableBody");
+
+    if (!tbody || coAuthorCount >= MAX_CO_AUTHORS) return;
+
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+        <td>
+            <input type="text"
+                class="co-name"
+                placeholder="Enter name"
+                aria-label="Co-author name">
+        </td>
+
+        <td>
+            <input type="text"
+                class="co-organisation"
+                placeholder="Enter organisation"
+                aria-label="Co-author organisation">
+        </td>
+
+        <td>
+            <input type="email"
+                class="co-email"
+                placeholder="Enter email"
+                aria-label="Co-author email">
+        </td>
+
+        <td>
+            <button type="button"
+                class="delete-btn"
+                aria-label="Remove co-author">
+                <i class="ri-delete-bin-6-line"></i>
+            </button>
+        </td>
+    `;
+
+    const deleteButton = row.querySelector(".delete-btn");
+
+    deleteButton.addEventListener("click", () => {
+        deleteCoAuthorRow(row);
+    });
+
+    tbody.appendChild(row);
+
+    coAuthorCount++;
+
+    updateCoAuthorButton();
+}
+
+function deleteCoAuthorRow(row) {
+    if (!row) return;
+
+    row.remove();
+
+    coAuthorCount = Math.max(0, coAuthorCount - 1);
+
+    updateCoAuthorButton();
+}
+
+function updateCoAuthorButton() {
+    const addButton = $("#addCoAuthorBtn");
+
+    if (!addButton) return;
+
+    addButton.disabled = coAuthorCount >= MAX_CO_AUTHORS;
+
+    addButton.textContent =
+        coAuthorCount >= MAX_CO_AUTHORS
+            ? "Maximum 3 Co-authors"
+            : "Add Co-author";
+}
+
+function getCoAuthors() {
+    const rows = document.querySelectorAll(
+        "#coAuthorTableBody tr"
+    );
+
+    return Array.from(rows).map(row => ({
+        name: row.querySelector(".co-name")?.value.trim() || "",
+        organisation:
+            row.querySelector(".co-organisation")?.value.trim() || "",
+        email: row.querySelector(".co-email")?.value.trim() || ""
+    }));
+}
+
+function validateCoAuthors() {
+    const rows = document.querySelectorAll(
+        "#coAuthorTableBody tr"
+    );
+
+    let valid = true;
+
+    rows.forEach(row => {
+        const name = row.querySelector(".co-name");
+        const organisation = row.querySelector(".co-organisation");
+        const email = row.querySelector(".co-email");
+
+        const hasAnyValue =
+            name.value.trim() ||
+            organisation.value.trim() ||
+            email.value.trim();
+
+        [name, organisation, email].forEach(field => {
+            field.classList.remove("bad");
+        });
+
+        if (hasAnyValue) {
+            if (!name.value.trim()) {
+                name.classList.add("bad");
+                valid = false;
+            }
+
+            if (!organisation.value.trim()) {
+                organisation.classList.add("bad");
+                valid = false;
+            }
+
+            if (!email.value.trim() || !isValidEmail(email.value.trim())) {
+                email.classList.add("bad");
+                valid = false;
+            }
+        }
+    });
+
+    return valid;
+}
+
+/* =========================================
+   VALIDATION HELPERS
+========================================= */
+
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
 function setError(element, error) {
     element.classList.toggle("bad", Boolean(error));
 
-    const container = element.parentElement.querySelector(".err");
-    if (container) container.textContent = error || "";
+    const container = element.parentElement?.querySelector(".err");
+
+    if (container) {
+        container.textContent = error || "";
+    }
 }
-
-// function validate() {
-//     let valid = true;
-
-//     form.querySelectorAll("input[required], select[required]").forEach(el => {
-//         let error = "";
-//         const value = el.value.trim();
-
-//         if (!value) {
-//             error = "Required";
-//         } else if (
-//             el.type === "email" &&
-//             !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-//         ) {
-//             error = "Enter a valid email address";
-//         } else if (
-//             el.type === "tel" &&
-//             value.replace(/\D/g, "").length < 8
-//         ) {
-//             error = "Enter a valid phone number";
-//         }
-
-//         setError(el, error);
-//         if (error) valid = false;
-//     });
-
-//     const selected = file.files[0];
-//     const extensions = ["pdf", "doc", "docx", "jpg", "jpeg", "png"];
-//     let fileError = "";
-
-//     if (!selected) {
-//         fileError = "Please attach your file";
-//     } else {
-//         const ext = selected.name.split(".").pop().toLowerCase();
-
-//         if (!extensions.includes(ext)) {
-//             fileError = "Unsupported file type";
-//         } else if (selected.size > CONFIG.MAX_MB * 1048576) {
-//             fileError = `File is larger than ${CONFIG.MAX_MB} MB`;
-//         }
-//     }
-
-//     $("#fileErr").textContent = fileError;
-//     if (fileError) valid = false;
-
-//     if (!$("#ok").checked) {
-//         showMessage("Please tick the confirmation box.", "no");
-//         valid = false;
-//     }
-
-//     return valid;
-// }
-
 
 function validate() {
     let valid = true;
 
+    /*
+       Validate all required fields.
+       The explicit ID list ensures the latest frontend fields
+       are checked even if a required attribute is missing.
+    */
+
+    const requiredFields = new Set(REQUIRED_FIELD_IDS);
+
     form.querySelectorAll(
         "input[required], select[required], textarea[required]"
     ).forEach(el => {
-        let error = "";
-        const value = el.value.trim();
+        if (el.type !== "file" && el.type !== "checkbox") {
+            requiredFields.add(el.id);
+        }
+    });
 
-        if (el.type === "checkbox") {
-            error = el.checked ? "" : "Please confirm this field.";
-        } else if (!value) {
+    requiredFields.forEach(id => {
+        const el = document.getElementById(id);
+
+        if (!el || !form.contains(el)) return;
+
+        const value = el.value.trim();
+        let error = "";
+
+        if (!value) {
             error = "This field is required.";
-        } else if (
-            el.type === "email" &&
-            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-        ) {
+        } else if (el.type === "email" && !isValidEmail(value)) {
             error = "Enter a valid email address.";
-        } else if (
-            el.id === "phone" &&
-            !/^\d{10}$/.test(value.replace(/\D/g, ""))
-        ) {
-            error = "Enter exactly 10 mobile digits without the country code.";
+        } else if (el.id === "phone") {
+            const digits = value.replace(/\D/g, "");
+
+            if (!/^\d{10}$/.test(digits)) {
+                error = "Enter exactly 10 mobile digits without the country code.";
+            }
         }
 
         setError(el, error);
+
         if (error) valid = false;
     });
 
+    /*
+       Validate consent checkbox.
+    */
+
+    const consent = $("#ok");
+
+    if (consent && !consent.checked) {
+        valid = false;
+
+        showMessage(
+            "Please agree to the terms and conditions before submitting.",
+            "no"
+        );
+    }
+
+    /*
+       Validate file upload.
+    */
+
     const selected = file.files[0];
-    const allowedExtensions = ["pdf", "doc", "jpg", "jpeg", "png"];
     let fileError = "";
 
     if (!selected) {
@@ -300,29 +525,40 @@ function validate() {
     } else {
         const ext = selected.name.split(".").pop().toLowerCase();
 
-        if (!allowedExtensions.includes(ext)) {
-            fileError = "Only PDF, DOC, JPG, JPEG and PNG files are allowed.";
+        if (!ALLOWED_EXTENSIONS.includes(ext)) {
+            fileError =
+                "Only PDF, DOC, DOCX, JPG, JPEG and PNG files are allowed.";
         } else if (selected.size === 0) {
             fileError = "The selected file is empty.";
         } else if (selected.size > CONFIG.MAX_MB * 1024 * 1024) {
-            fileError = `File size must not exceed ${CONFIG.MAX_MB} MB.`;
+            fileError =
+                `File size must not exceed ${CONFIG.MAX_MB} MB.`;
         }
     }
 
-    $("#fileErr").textContent = fileError;
+    const fileErrorElement = $("#fileErr");
+
+    if (fileErrorElement) {
+        fileErrorElement.textContent = fileError;
+    }
+
     if (fileError) valid = false;
 
-    if (!$("#ok").checked) {
-        showMessage(
-            "Please confirm that you have permission to submit this work.",
-            "no"
-        );
+    /*
+       Validate co-author rows.
+       A partially completed co-author row is not accepted.
+    */
+
+    if (!validateCoAuthors()) {
         valid = false;
     }
 
     return valid;
 }
 
+/* =========================================
+   FILE CONVERSION
+========================================= */
 
 function toBase64(selectedFile) {
     return new Promise((resolve, reject) => {
@@ -332,188 +568,107 @@ function toBase64(selectedFile) {
             resolve(String(reader.result).split(",")[1]);
         };
 
-        reader.onerror = () => reject(new Error("Unable to read the selected file."));
+        reader.onerror = () => {
+            reject(new Error("Unable to read the selected file."));
+        };
+
         reader.readAsDataURL(selectedFile);
     });
 }
+
+/* =========================================
+   MESSAGES
+========================================= */
 
 function showMessage(text, type) {
     msg.className = `msg ${type}`;
     msg.textContent = text;
 }
 
-// async function submitForm(e) {
-//     e.preventDefault();
+function showSuccess(ref) {
+    msg.className = "msg ok";
+    msg.replaceChildren();
 
-//     console.log("Submit handler started");
+    const card = document.createElement("div");
+    card.className = "success-card";
 
-//     const data = Object.fromEntries(new FormData(form).entries());
+    card.innerHTML = `
+        <div class="success-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+                <path d="M5 12.5L9.5 17L19 7"
+                    stroke="currentColor"
+                    stroke-width="2.4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"/>
+            </svg>
+        </div>
 
-//     delete data.file;
+        <div class="success-content">
+            <span class="success-eyebrow">
+                SUBMISSION CONFIRMED
+            </span>
 
-//     // Keep hp_field in the payload so the backend can check it.
-//     data.consent = $("#ok").checked;
-//     data.fileName = selectedFile.name;
-//     data.mimeType = selectedFile.type || "application/octet-stream";
-//     data.fileData = await toBase64(selectedFile);
+            <h3>Thank You for Your Contribution!</h3>
 
+            <p class="success-description">
+                Your submission for
+                <strong>The Human Edge</strong>
+                has been received successfully.
+            </p>
 
-//     msg.className = "msg";
-//     msg.textContent = "";
+            <div class="reference-card">
+                <span class="reference-label">
+                    YOUR REFERENCE NUMBER
+                </span>
 
-//     // Anti-spam trap: real visitors never see or fill this field
-//     if ($("#hp_field").value) {
-//         showMessage("Submission blocked. Please refresh the page and try again.", "no");
-//         return;
-//     }
+                <strong class="reference-number"></strong>
+            </div>
 
-//     if (!validate()) {
-//         if (!msg.textContent) {
-//             showMessage("Please check the required fields and try again.", "no");
-//         }
+            <p class="success-note">
+                A confirmation email will be sent if email notifications are enabled.
+            </p>
+        </div>
+    `;
 
-//         // Bring the first problem into view so the visitor can see what to fix
-//         const firstProblem = form.querySelector(".bad") ||
-//             ($("#fileErr").textContent ? $("#drop") : msg);
-//         firstProblem.scrollIntoView({ behavior: "smooth", block: "center" });
-//         return;
-//     }
+    card.querySelector(".reference-number").textContent =
+        ref || "Not provided";
 
-//     if (Date.now() > new Date(CONFIG.DEADLINE).getTime()) {
-//         showMessage("The submission deadline has passed.", "no");
-//         return;
-//     }
+    msg.appendChild(card);
+}
 
-//     if (!CONFIG.SCRIPT_URL.endsWith("/exec")) {
-//         showMessage("Invalid submission service URL.", "no");
-//         return;
-//     }
+/* =========================================
+   RESET CO-AUTHORS
+========================================= */
 
-//     const selectedFile = file.files[0];
-//     const fill = bar.firstElementChild;
+function resetCoAuthors() {
+    const tbody = $("#coAuthorTableBody");
 
-//     button.disabled = true;
-//     button.textContent = "Uploading...";
-//     bar.style.display = "block";
-//     fill.style.width = "10%";
+    if (tbody) {
+        tbody.replaceChildren();
+    }
 
-//     try {
-//         const data = Object.fromEntries(new FormData(form).entries());
+    coAuthorCount = 0;
 
-//         delete data.hp_field;
+    updateCoAuthorButton();
+}
 
-//         data.fileName = selectedFile.name;
-//         data.mimeType = selectedFile.type || "application/octet-stream";
-//         data.fileData = await toBase64(selectedFile);
-
-//         fill.style.width = "45%";
-
-//         const response = await fetch(CONFIG.SCRIPT_URL, {
-//             method: "POST",
-//             headers: {
-//                 "Content-Type": "text/plain;charset=utf-8"
-//             },
-//             body: JSON.stringify(data),
-//             redirect: "follow"
-//         });
-
-//         if (!response.ok) {
-//             throw new Error(`Server returned HTTP ${response.status}`);
-//         }
-
-//         fill.style.width = "80%";
-
-//         const result = await response.json();
-
-//         console.log("Apps Script response:", result);
-
-//         if (!result.ok) {
-//             throw new Error(result.error || "Submission could not be saved.");
-//         }
-
-//         fill.style.width = "100%";
-
-
-//         msg.className = "msg ok";
-//         msg.innerHTML = `
-//         <div class="success-card">
-//             <div class="success-icon" aria-hidden="true">
-//             <svg viewBox="0 0 24 24" fill="none">
-//                 <path
-//                 d="M5 12.5L9.5 17L19 7"
-//                 stroke="currentColor"
-//                 stroke-width="2.4"
-//                 stroke-linecap="round"
-//                 stroke-linejoin="round"
-//                 />
-//             </svg>
-//             </div>
-
-//             <div class="success-content">
-//             <span class="success-eyebrow">SUBMISSION CONFIRMED</span>
-//             <h3>Thank You for Your Contribution!</h3>
-//             <p class="success-description">
-//                 Your submission for <strong>The Human Edge</strong>
-//                 has been received successfully.
-//             </p>
-
-//             <div class="reference-card">
-//                 <span class="reference-label">YOUR REFERENCE NUMBER</span>
-//                 <strong class="reference-number"></strong>
-//             </div>
-
-//             <p class="success-note">
-//                 <span class="success-note-icon" aria-hidden="true">✉</span>
-//                 A confirmation email will be sent if email notifications
-//                 are enabled.
-//             </p>
-//             </div>
-//         </div>
-//         `;
-
-//         msg.querySelector(".reference-number").textContent = result.ref;
-
-
-//         form.reset();
-//         showFile();
-
-//         msg.scrollIntoView({
-//             behavior: "smooth",
-//             block: "center"
-//         });
-
-//     } catch (error) {
-//         console.error("Submission error:", error);
-//         const networkProblem = error instanceof TypeError;
-
-//         showMessage(
-//             networkProblem
-//                 ? "Could not reach the submission service. Please check your internet connection and try again. If this continues, contact us by email."
-//                 : "Your submission could not be completed. " + error.message,
-//             "no"
-//         );
-
-//     } finally {
-//         button.disabled = false;
-//         button.textContent = "Submit Your Work";
-
-//         setTimeout(() => {
-//             bar.style.display = "none";
-//             fill.style.width = "0%";
-//         }, 1500);
-//     }
-// }
+/* =========================================
+   FORM SUBMISSION
+========================================= */
 
 async function submitForm(e) {
     e.preventDefault();
 
-    console.log("Submit handler started");
-
     msg.className = "msg";
     msg.textContent = "";
 
-    // Spam protection
-    if ($("#hp_field").value) {
+    /*
+       Anti-spam honeypot.
+    */
+
+    const honeypot = $("#hp_field");
+
+    if (honeypot && honeypot.value.trim()) {
         showMessage(
             "Submission blocked. Please refresh the page and try again.",
             "no"
@@ -521,7 +676,10 @@ async function submitForm(e) {
         return;
     }
 
-    // Validate all fields and uploaded file
+    /*
+       Validate form.
+    */
+
     if (!validate()) {
         if (!msg.textContent) {
             showMessage(
@@ -532,9 +690,9 @@ async function submitForm(e) {
 
         const firstProblem =
             form.querySelector(".bad") ||
-            ($("#fileErr").textContent ? $("#drop") : msg);
+            ($("#fileErr")?.textContent ? $("#drop") : msg);
 
-        firstProblem.scrollIntoView({
+        firstProblem?.scrollIntoView({
             behavior: "smooth",
             block: "center"
         });
@@ -542,21 +700,29 @@ async function submitForm(e) {
         return;
     }
 
-    // IMPORTANT: Declare selectedFile before using it
     const selectedFile = file.files[0];
 
-    if (!selectedFile) {
-        showMessage("Please select a file to upload.", "no");
-        return;
-    }
+    /*
+       Check deadline.
+    */
 
     if (Date.now() > new Date(CONFIG.DEADLINE).getTime()) {
-        showMessage("The submission deadline has passed.", "no");
+        showMessage(
+            "The submission deadline has passed.",
+            "no"
+        );
         return;
     }
 
-    if (!CONFIG.SCRIPT_URL.endsWith("/exec")) {
-        showMessage("Invalid submission service URL.", "no");
+    /*
+       Check Google Apps Script URL.
+    */
+
+    if (!CONFIG.SCRIPT_URL || !CONFIG.SCRIPT_URL.endsWith("/exec")) {
+        showMessage(
+            "Invalid submission service URL.",
+            "no"
+        );
         return;
     }
 
@@ -564,26 +730,115 @@ async function submitForm(e) {
 
     button.disabled = true;
     button.textContent = "Uploading...";
+
     bar.style.display = "block";
-    fill.style.width = "10%";
+
+    if (fill) {
+        fill.style.width = "10%";
+    }
 
     try {
+        /*
+           Collect standard form fields.
+        */
+
         const data = Object.fromEntries(
             new FormData(form).entries()
         );
 
-        // Do not send the raw file input object
+        /*
+           Remove the raw file input.
+        */
+
         delete data.file;
 
-        // Preserve the honeypot for backend spam validation
-        data.consent = $("#ok").checked;
+        /*
+           Add consent explicitly.
+        */
+
+        // data.consent = Boolean($("#ok")?.checked);
+        // Validate both mandatory consents
+
+        // ======================================
+        // CONSENT VALIDATION
+        // ======================================
+
+        const ownershipConsent = $("#consentOwnership");
+        const presentationConsent = $("#consentPresentation");
+        const consentError = $("#consentError");
+
+        const consentCards = document.querySelectorAll(".consent-card");
+
+        const ownershipAccepted = ownershipConsent?.checked === true;
+        const presentationAccepted = presentationConsent?.checked === true;
+
+        const consentValid = ownershipAccepted && presentationAccepted;
+
+        // Clear previous error styles
+        consentCards.forEach(card => {
+            card.classList.remove("has-error");
+        });
+
+        // Show or hide error message
+        if (consentError) {
+            consentError.hidden = consentValid;
+        }
+
+        // Stop submission if either consent is missing
+        if (!consentValid) {
+
+            if (!ownershipAccepted) {
+                ownershipConsent?.closest(".consent-card")
+                    ?.classList.add("has-error");
+            }
+
+            if (!presentationAccepted) {
+                presentationConsent?.closest(".consent-card")
+                    ?.classList.add("has-error");
+            }
+
+            consentError?.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+
+            if (!ownershipAccepted) {
+                ownershipConsent?.focus({ preventScroll: true });
+            } else {
+                presentationConsent?.focus({ preventScroll: true });
+            }
+
+            return;
+        }
+
+        // Both declarations accepted
+        data.consent_ownership = true;
+        data.consent_presentation = true;
+
+
+        /*
+           Collect co-author information.
+        */
+
+        data.coauthors = JSON.stringify(getCoAuthors());
+
+        /*
+           Add file details.
+        */
+
         data.fileName = selectedFile.name;
         data.mimeType =
             selectedFile.type || "application/octet-stream";
 
         data.fileData = await toBase64(selectedFile);
 
-        fill.style.width = "45%";
+        if (fill) {
+            fill.style.width = "45%";
+        }
+
+        /*
+           Send to Google Apps Script.
+        */
 
         const response = await fetch(CONFIG.SCRIPT_URL, {
             method: "POST",
@@ -600,7 +855,9 @@ async function submitForm(e) {
             );
         }
 
-        fill.style.width = "80%";
+        if (fill) {
+            fill.style.width = "80%";
+        }
 
         const result = await response.json();
 
@@ -610,49 +867,25 @@ async function submitForm(e) {
             );
         }
 
-        fill.style.width = "100%";
+        if (fill) {
+            fill.style.width = "100%";
+        }
 
-        msg.className = "msg ok";
-        msg.innerHTML = `
-            <div class="success-card">
-                <div class="success-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <path d="M5 12.5L9.5 17L19 7"
-                            stroke="currentColor"
-                            stroke-width="2.4"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"/>
-                    </svg>
-                </div>
-                <div class="success-content">
-                    <span class="success-eyebrow">
-                        SUBMISSION CONFIRMED
-                    </span>
-                    <h3>Thank You for Your Contribution!</h3>
-                    <p class="success-description">
-                        Your submission for
-                        <strong>The Human Edge</strong>
-                        has been received successfully.
-                    </p>
-                    <div class="reference-card">
-                        <span class="reference-label">
-                            YOUR REFERENCE NUMBER
-                        </span>
-                        <strong class="reference-number"></strong>
-                    </div>
-                    <p class="success-note">
-                        A confirmation email will be sent if
-                        email notifications are enabled.
-                    </p>
-                </div>
-            </div>
-        `;
+        /*
+           Show success message.
+        */
 
-        msg.querySelector(".reference-number").textContent =
-            result.ref;
+        showSuccess(result.ref);
+
+        /*
+           Reset form and upload UI.
+        */
 
         form.reset();
+
         showFile();
+        updateFormatHint();
+        resetCoAuthors();
 
         msg.scrollIntoView({
             behavior: "smooth",
@@ -665,18 +898,20 @@ async function submitForm(e) {
         showMessage(
             error instanceof TypeError
                 ? "Could not reach the submission service. Check your internet connection and try again."
-                : "Your submission could not be completed. " +
-                error.message,
+                : "Your submission could not be completed. " + error.message,
             "no"
         );
 
     } finally {
         button.disabled = false;
-        button.textContent = "Submit Your Work";
+        button.textContent = "Submit Your Paper";
 
         setTimeout(() => {
             bar.style.display = "none";
-            fill.style.width = "0%";
+
+            if (fill) {
+                fill.style.width = "0%";
+            }
         }, 1500);
     }
 }
